@@ -6,6 +6,8 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         });
     }
 
+    cardRadius: number;
+
     topCard: CircleBasedCard;
     playerCard: CircleBasedCard;
     animationCard: CircleBasedCard;
@@ -20,9 +22,14 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
     timerActive: boolean;
 
     scoreText: Phaser.GameObjects.Text;
+    scoreMessage: Phaser.GameObjects.Text;
+    restartButton: Phaser.GameObjects.Text;
     score: number;
     incScoreTween: Phaser.Tweens.Tween;
     decScoreTween: Phaser.Tweens.Tween;
+
+    countdown: Phaser.GameObjects.Text;
+    thirdTween: Phaser.Tweens.Tween;
 
     preload() {
         this.load.json('cardsSet', 'data/cards8.json');
@@ -56,6 +63,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         camera.setScroll(-camera.width / 2, -camera.height / 2);
 
         const cardRadius = Math.min(camera.height, camera.width) / 2.0 * 0.8;
+        this.cardRadius = cardRadius;
         this.topCard = new CircleBasedCard(this, cardRadius, this);
         this.playerCard = new CircleBasedCard(this, cardRadius, this);
         this.animationCard = new CircleBasedCard(this, cardRadius, null);
@@ -64,8 +72,8 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         this.add.existing(this.playerCard);
         this.add.existing(this.animationCard);
         
-        this.topCard.setPosition(-camera.height * 0.9 / 2.0, 0.0);
-        this.playerCard.setPosition(+camera.height * 0.9 / 2.0, 0.0);
+        this.topCard.setPosition(-camera.height, 0.0);
+        this.playerCard.setPosition(+camera.height, 0.0);
         this.animationCard.setPosition(-camera.height * 0.9 / 2.0, 0.0);
         this.animationCard.setVisible(false);
 
@@ -73,8 +81,8 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         this.cardTween = this.add.tween({
             targets: this.animationCard,
             x: {
-                from: this.topCard.x,
-                to: this.playerCard.x
+                from: -camera.height * 0.9 / 2.0,
+                to: +camera.height * 0.9 / 2.0
             },
             duration: 200,
             onComplete: () => {
@@ -85,12 +93,14 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             paused: true
         });
 
-        let countdown = this.add.text(camera.height * 0.9 / 2.0, 0.0, '3', {
+        let countdown = this.add.text(camera.height * 0.9 / 2.0, 0.0, '', {
             fontSize: cardRadius,
             stroke: '#008ba3',
             strokeThickness: 2
         });
         countdown.setOrigin(0.5, 0.5);
+        countdown.setVisible(false);
+        this.countdown = countdown;
 
         let firstTween = this.add.tween({
             targets: countdown,
@@ -118,20 +128,21 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             targets: countdown,
             scale: {from: .5, to: 1.5},
             duration: 600,
+            paused: true,
             onComplete: () => {
                 secondTween.play();
                 countdown.setText('2');
             }
         });
+        this.thirdTween = thirdTween;
 
-        this.timerText = this.add.text(0, -camera.height * 0.8 / 2.0, '00:59.9', {
+        this.timerText = this.add.text(0, -camera.height * 0.8 / 2.0, '', {
             fontSize: cardRadius / 4
         });
         this.timerText.setOrigin(0.5, 0.5);
-        this.timer = 59.999;
-        this.timerActive = false;
+        this.timerText.setAlpha(0.0);
 
-        this.scoreText = this.add.text(0, +camera.height * 0.8 / 2.0, '0', {
+        this.scoreText = this.add.text(0, camera.height, '', {
             fontSize: cardRadius / 4
         });
         this.scoreText.setOrigin(0.5, 0.5);
@@ -162,9 +173,24 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             }
         });
 
-        this.shuffleCards(this.cardsSet);
-        this.currentCard = 0;
-        this.topCard.setCard(this.cardsSet[this.currentCard]);
+        this.scoreMessage = this.add.text(0, -camera.height, 'Your final score:', {
+            fontSize: cardRadius / 4
+        });
+        this.scoreMessage.setOrigin(0.5, 0.5);
+
+        this.restartButton = this.add.text(0, camera.height, 'RESTART', {
+            fontSize: cardRadius / 4,
+            stroke: '#008ba3',
+            fill: '#00bcd4',
+            strokeThickness: 2
+        });
+        this.restartButton.setOrigin(0.5, 0.5);
+        this.restartButton.setInteractive({
+            useHandCursor: true
+        });
+        this.restartButton.on('pointerdown', SimpleScene.prototype.restart, this);
+
+        this.restart();
     }
 
     update(time: number, delta: number) {  
@@ -181,7 +207,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             }
             if (this.timer === 0) {
                 this.timerActive = false;
-                stop();
+                this.stop();
             }
         }
     }
@@ -207,12 +233,108 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
 
     start() {
         this.timerActive = true;
-        this.timer = 59.9;
         this.nextPair();
     }
 
     stop() {
+        let camera = this.cameras.main;
+        this.tweens.createTimeline({
+            paused: true,
+            tweens: [{
+                targets: [this.timerText],
+                alpha: 0.0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.topCard],
+                x: -camera.width,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.playerCard],
+                x: camera.width,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.scoreText],
+                y: this.cardRadius / 6,
+                duration: 500,
+                offset: 0
+            }, {
+                targets: [this.scoreMessage],
+                y: -this.cardRadius / 6,
+                duration: 500,
+                offset: 0
+            }, {
+                targets: [this.restartButton],
+                y: this.cardRadius / 2,
+                duration: 500,
+                offset: 0
+            }]
+        }).play();
+    }
 
+    restart() {
+        console.log('restart');
+        this.shuffleCards(this.cardsSet);
+        this.currentCard = 0;
+        this.topCard.setCard(this.cardsSet[this.currentCard]);
+        this.playerCard.setCard(new Map());
+
+        this.score = 0;
+        this.scoreText.setText('0');
+        this.scoreText.setColor('#ffffff');
+
+        this.timerActive = false;
+        this.timer = 59.9;
+        this.timerText.setText('00:' + (this.timer < 10 ? '0' : '')  + this.timer.toFixed(1));
+        if (this.timer < 10) {
+            this.timerText.setColor('#d50000');
+        } else {
+            this.timerText.setColor('#ffffff');
+        }
+
+        let camera = this.cameras.main;
+        let self = this;
+        this.tweens.createTimeline({
+            paused: true,
+            onComplete: () => {
+                self.countdown.setText('3');
+                self.countdown.setVisible(true);
+                self.thirdTween.play();
+            },
+            tweens: [{
+                targets: [this.timerText],
+                alpha: 1.0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.topCard],
+                x: -camera.height * 0.9 / 2.0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.playerCard],
+                x: camera.height * 0.9 / 2.0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.scoreText],
+                y: +camera.height * 0.8 / 2.0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.scoreMessage],
+                y: -camera.height,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.restartButton],
+                y: camera.height,
+                duration: 400,
+                offset: 0
+            }]
+        }).play();
     }
 
     nextPair() {
