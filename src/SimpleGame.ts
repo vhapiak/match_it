@@ -1,4 +1,4 @@
-class SimpleScene extends Phaser.Scene implements ICardListener {
+class SimpleScene extends Phaser.Scene implements ICardListener, IMainMenuListener {
     constructor() {
         super({
             key: 'simple',
@@ -8,12 +8,15 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
 
     cardRadius: number;
 
+    mainMenu: MainMenu;
+
     topCard: CircleBasedCard;
     playerCard: CircleBasedCard;
     animationCard: CircleBasedCard;
     cardTween: Phaser.Tweens.Tween;
     idToColor: Map<string, number>;
 
+    cardsSets: Map<number, Card[]>;
     cardsSet: Card[];
     currentCard: number;
 
@@ -32,7 +35,8 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
     thirdTween: Phaser.Tweens.Tween;
 
     preload() {
-        this.load.json('cardsSet', 'data/cards8.json');
+        this.load.json('cardsSet8', 'data/cards8.json');
+        this.load.json('cardsSet6', 'data/cards6.json');
         for (let i = 0; i < 57; ++i) {
             this.load.image('flag' + i, 'data/img/' + i + '.png');
         }
@@ -41,29 +45,19 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
     create() {
         this.idToColor = new Map();
 
-        const cardsSetJson = this.cache.json.get('cardsSet');
-        this.cardsSet = [];
-        for (let cardJson of cardsSetJson) {
-            let card: Card = new Map<string, CardElement>();
-            for (let key in cardJson) {
-                const elementJson = cardJson[key];
-                const element: CardElement = {
-                    id: this.getColor(key),
-                    x: Number(elementJson.x),
-                    y: Number(elementJson.y),
-                    r: Number(elementJson.r),
-                    a: Math.random() * 360 - 180
-                };
-                card.set(key, element);
-            }
-            this.cardsSet.push(card);
-        }
+        this.cardsSets = new Map();
+        this.cardsSets.set(8, this.loadCardSet('cardsSet8'));
+        this.cardsSets.set(6, this.loadCardSet('cardsSet6'));
 
         let camera = this.cameras.main; 
         camera.setScroll(-camera.width / 2, -camera.height / 2);
 
         const cardRadius = Math.min(camera.height, camera.width) / 2.0 * 0.8;
         this.cardRadius = cardRadius;
+
+        this.mainMenu = new MainMenu(this, cardRadius, this);
+        this.add.existing(this.mainMenu);
+
         this.topCard = new CircleBasedCard(this, cardRadius, this);
         this.playerCard = new CircleBasedCard(this, cardRadius, this);
         this.animationCard = new CircleBasedCard(this, cardRadius, null);
@@ -72,8 +66,8 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         this.add.existing(this.playerCard);
         this.add.existing(this.animationCard);
         
-        this.topCard.setPosition(-camera.height, 0.0);
-        this.playerCard.setPosition(+camera.height, 0.0);
+        this.topCard.setPosition(-camera.width, 0.0);
+        this.playerCard.setPosition(+camera.width, 0.0);
         this.animationCard.setPosition(-camera.height * 0.9 / 2.0, 0.0);
         this.animationCard.setVisible(false);
 
@@ -105,7 +99,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         let firstTween = this.add.tween({
             targets: countdown,
             scale: {from: .5, to: 1.5},
-            duration: 600,
+            duration: 1000,
             paused: true,
             onComplete: () => {
                 countdown.setVisible(false);
@@ -116,7 +110,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         let secondTween = this.add.tween({
             targets: countdown,
             scale: {from: .5, to: 1.5},
-            duration: 600,
+            duration: 1000,
             paused: true,
             onComplete: () => {
                 firstTween.play();
@@ -127,7 +121,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         let thirdTween = this.add.tween({
             targets: countdown,
             scale: {from: .5, to: 1.5},
-            duration: 600,
+            duration: 1000,
             paused: true,
             onComplete: () => {
                 secondTween.play();
@@ -188,9 +182,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
         this.restartButton.setInteractive({
             useHandCursor: true
         });
-        this.restartButton.on('pointerdown', SimpleScene.prototype.restart, this);
-
-        this.restart();
+        this.restartButton.on('pointerdown', SimpleScene.prototype.showMenu, this);
     }
 
     update(time: number, delta: number) {  
@@ -229,6 +221,14 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             this.decScoreTween.play();
         }
         this.scoreText.setText(this.score.toString(10));
+    }
+
+    onModeSelected(mode: number): void {
+        if (!this.cardsSets.has(mode)) {
+            return;
+        }
+        this.cardsSet = this.cardsSets.get(mode);
+        this.restart();
     }
 
     start() {
@@ -304,6 +304,11 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
                 self.thirdTween.play();
             },
             tweens: [{
+                targets: [this.mainMenu],
+                y: -camera.height,
+                duration: 400,
+                offset: 0
+            }, {
                 targets: [this.timerText],
                 alpha: 1.0,
                 duration: 400,
@@ -321,6 +326,34 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             }, {
                 targets: [this.scoreText],
                 y: +camera.height * 0.8 / 2.0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.scoreMessage],
+                y: -camera.height,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.restartButton],
+                y: camera.height,
+                duration: 400,
+                offset: 0
+            }]
+        }).play();
+    }
+
+    showMenu() {
+        let camera = this.cameras.main;
+        this.tweens.createTimeline({
+            paused: true,
+            tweens: [{
+                targets: [this.mainMenu],
+                y: 0,
+                duration: 400,
+                offset: 0
+            }, {
+                targets: [this.scoreText],
+                y: camera.height,
                 duration: 400,
                 offset: 0
             }, {
@@ -370,6 +403,27 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
             let rand = Math.floor(Math.random() * (i + 1));
             [array[i], array[rand]] = [array[rand], array[i]]
         }
+    }
+
+    loadCardSet(key: string): Card[] {
+        const cardsSetJson = this.cache.json.get(key);
+        let cardsSet: Card[] = [];
+        for (let cardJson of cardsSetJson) {
+            let card: Card = new Map<string, CardElement>();
+            for (let key in cardJson) {
+                const elementJson = cardJson[key];
+                const element: CardElement = {
+                    id: this.getColor(key),
+                    x: Number(elementJson.x),
+                    y: Number(elementJson.y),
+                    r: Number(elementJson.r),
+                    a: Math.random() * 360 - 180
+                };
+                card.set(key, element);
+            }
+            cardsSet.push(card);
+        }
+        return cardsSet;
     }
 }
 
