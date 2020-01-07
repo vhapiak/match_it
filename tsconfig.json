@@ -1,0 +1,8 @@
+{
+    "compilerOptions": {
+        "target": "ES6",
+        "module": "none",
+        "outDir": "public/js/"
+    },
+    "include": ["src/**/*", "types/phaser.d.ts"]
+}
