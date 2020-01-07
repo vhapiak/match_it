@@ -25,7 +25,7 @@ class MainMenu extends Phaser.GameObjects.Container {
         this.add(text);
 
         let buttons = {
-            '3': -radius,
+            '4': -radius,
             '6': 0,
             '8': radius 
         };

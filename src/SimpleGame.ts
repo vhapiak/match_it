@@ -37,6 +37,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener, IMainMenuListen
     preload() {
         this.load.json('cardsSet8', 'data/cards8.json');
         this.load.json('cardsSet6', 'data/cards6.json');
+        this.load.json('cardsSet4', 'data/cards4.json');
         for (let i = 0; i < 57; ++i) {
             this.load.image('flag' + i, 'data/img/' + i + '.png');
         }
@@ -48,6 +49,7 @@ class SimpleScene extends Phaser.Scene implements ICardListener, IMainMenuListen
         this.cardsSets = new Map();
         this.cardsSets.set(8, this.loadCardSet('cardsSet8'));
         this.cardsSets.set(6, this.loadCardSet('cardsSet6'));
+        this.cardsSets.set(4, this.loadCardSet('cardsSet4'));
 
         let camera = this.cameras.main; 
         camera.setScroll(-camera.width / 2, -camera.height / 2);

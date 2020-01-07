@@ -117,11 +117,15 @@ function main() {
     for (let permutation of permutations) {
         shuffleArray(permutation);
         let circles: Circle[] = [];
-        const radiuses = [80, 70, 70, 60, 50, 45, 40, 40];
-        if (permutation.length > radiuses.length) {
-            console.error('Need to fix radiuses');
+        const radiusesMap: Map<number, number[]> = new Map();
+        radiusesMap.set(8, [80, 70, 70, 60, 50, 45, 40, 40]);
+        radiusesMap.set(6, [80, 70, 70, 60, 50, 45]);
+        radiusesMap.set(4, [100, 90, 80, 70]);
+        if (!radiusesMap.has(permutation.length)) {
+            console.error('No radiuses for length: ' + permutation.length);
             return;
         }
+        const radiuses = radiusesMap.get(permutation.length);
         while (circles.length !== permutation.length) {
             let builder = new CardBuilder(256, 12);
             circles = [];
