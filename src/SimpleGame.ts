@@ -339,7 +339,16 @@ class SimpleScene extends Phaser.Scene implements ICardListener {
 
     nextPair() {
         if (this.currentCard + 1 >= this.cardsSet.length) {
-            return;
+            const lastCard = this.cardsSet[this.currentCard];
+            this.shuffleCards(this.cardsSet);
+            for (let i = 0; i < this.cardsSet.length; ++i) {
+                if (this.cardsSet[i] == lastCard) {
+                    this.cardsSet[i] = this.cardsSet[0];
+                    this.cardsSet[0] = lastCard;
+                    this.currentCard = 0;
+                    break;
+                }
+            }
         }
         this.animationCard.setCard(this.cardsSet[this.currentCard])
         this.animationCard.setVisible(true);
